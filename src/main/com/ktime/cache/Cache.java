@@ -1,6 +1,6 @@
 package com.ktime.cache;
 
-public interface Cache {
-    public Object put(Object key, Object val);
-    public Object get(Object key);
+public interface Cache<K, V> {
+    public void put(K key, V val);
+    public V get(K key);
 }
