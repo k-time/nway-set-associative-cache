@@ -1,7 +1,5 @@
 package com.ktime.cache;
 
-import java.util.Date;
-
 public class CacheBlock {
 
     private int keyHash;

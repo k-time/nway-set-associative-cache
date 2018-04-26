@@ -4,13 +4,25 @@ package com.ktime.cache;
  * Implementation of an N-way set-associative cache.
  */
 public class NWaySetCache<K, V> implements Cache<K, V> {
+    private static final int DEFAULT_BLOCK_SIZE = 4;
+    private static final int DEFAULT_SET_SIZE = 4;
+    private static final ReplacementPolicy DEFAULT_POLICY = StandardPolicy.LRU;
+
     private int blockSize;
     private int setSize;
     private CacheSet[] cacheSetArray;
     private ReplacementPolicy policy;
 
     public NWaySetCache() {
-        this(8, 8, new LRUPolicy());
+        this(DEFAULT_BLOCK_SIZE, DEFAULT_SET_SIZE, DEFAULT_POLICY);
+    }
+
+    public NWaySetCache(int blockSize, int setSize) {
+        this(blockSize, setSize, DEFAULT_POLICY);
+    }
+
+    public NWaySetCache(ReplacementPolicy policy) {
+        this(DEFAULT_BLOCK_SIZE, DEFAULT_SET_SIZE, policy);
     }
 
     public NWaySetCache(int blockSize, int setSize, ReplacementPolicy policy) {
@@ -32,10 +44,11 @@ public class NWaySetCache<K, V> implements Cache<K, V> {
     }
 
     public V get(K key) {
-
+        int keyHash = key.hashCode();
+        int setIndex = calculateSetIndex(keyHash);
+        Object val = getCacheSet(setIndex).get(keyHash);
         // Need to cast back to V. This is ok because we ensured that every object in the CacheSet is type V
-        //TODO
-        return (V) null;
+        return (V) val;
     }
 
     private CacheSet getCacheSet(int index) {
