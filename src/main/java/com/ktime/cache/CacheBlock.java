@@ -5,7 +5,7 @@ public class CacheBlock {
     private int keyHash;
     private Object value;
 
-    public CacheBlock(int keyHash, Object value) {
+    CacheBlock(int keyHash, Object value) {
         this.keyHash = keyHash;
         this.value = value;
     }

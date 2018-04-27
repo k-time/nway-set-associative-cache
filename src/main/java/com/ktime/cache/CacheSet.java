@@ -3,29 +3,35 @@ package com.ktime.cache;
 import java.util.LinkedList;
 import java.util.ListIterator;
 
+/**
+ * Package-private. Class should be hidden from client.
+ */
 class CacheSet {
     private int maxSize;
     private ReplacementPolicy policy;
     private LinkedList<CacheBlock> blockList; // List starts with MRU block; ends with LRU block
 
-    public CacheSet(int maxSize, ReplacementPolicy policy) {
+    CacheSet(int maxSize, ReplacementPolicy policy) {
         this.maxSize = maxSize;
         this.policy = policy;
         this.blockList = new LinkedList<>();
     }
 
-    public void put(CacheBlock cacheBlock) {
+    void put(CacheBlock cacheBlock) {
         CacheBlock removedBlock = removeBlockIfExists(cacheBlock.getKeyHash());
         if (removedBlock != null || !isFull()) {
             blockList.addFirst(cacheBlock);
         }
         else {
             policy.replace(cacheBlock, blockList);
+            if (blockList.size() > maxSize) {
+                //throw new Exception("Invalid replacement policy");
+            }
         }
     }
 
 
-    public Object get(int keyHash) {
+    Object get(int keyHash) {
         CacheBlock removedBlock = removeBlockIfExists(keyHash);
         if (removedBlock != null) {
             blockList.addFirst(removedBlock);
@@ -47,15 +53,15 @@ class CacheSet {
         return null;
     }
 
-    public int getSize() {
+    int getSize() {
         return blockList.size();
     }
 
-    public boolean isEmpty() {
+    boolean isEmpty() {
         return blockList.isEmpty();
     }
 
-    public boolean isFull() {
+    boolean isFull() {
         return getSize() == maxSize;
     }
 }

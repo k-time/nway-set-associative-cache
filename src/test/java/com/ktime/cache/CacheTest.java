@@ -6,6 +6,10 @@ public class CacheTest {
 
     @Test
     public void Test() {
-        Cache<String, String> cache = new NWaySetCache<>(4, 4, StandardPolicy.MRU);
+        Cache<Integer, Integer> cache = new NWaySetCache<>(4, 4, StandardPolicy.LRU);
+        for (int i = 0; i < 20; i++) {
+            cache.put(i, i);
+        }
+        int i=0;
     }
 }

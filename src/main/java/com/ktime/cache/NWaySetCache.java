@@ -4,34 +4,34 @@ package com.ktime.cache;
  * Implementation of an N-way set-associative cache.
  */
 public class NWaySetCache<K, V> implements Cache<K, V> {
-    private static final int DEFAULT_BLOCK_SIZE = 4;
-    private static final int DEFAULT_SET_SIZE = 4;
+    private static final int DEFAULT_BLOCKS_PER_SET = 4;
+    private static final int DEFAULT_NUM_SETS = 16;
     private static final ReplacementPolicy DEFAULT_POLICY = StandardPolicy.LRU;
 
-    private int blockSize;
-    private int setSize;
-    private CacheSet[] cacheSetArray;
-    private ReplacementPolicy policy;
+    private final int blocksPerSet;
+    private final int numSets;
+    private final CacheSet[] cacheSetArray;
+    private final ReplacementPolicy policy;
 
     public NWaySetCache() {
-        this(DEFAULT_BLOCK_SIZE, DEFAULT_SET_SIZE, DEFAULT_POLICY);
+        this(DEFAULT_BLOCKS_PER_SET, DEFAULT_NUM_SETS, DEFAULT_POLICY);
     }
 
-    public NWaySetCache(int blockSize, int setSize) {
-        this(blockSize, setSize, DEFAULT_POLICY);
+    public NWaySetCache(int blocksPerSet, int numSets) {
+        this(blocksPerSet, numSets, DEFAULT_POLICY);
     }
 
     public NWaySetCache(ReplacementPolicy policy) {
-        this(DEFAULT_BLOCK_SIZE, DEFAULT_SET_SIZE, policy);
+        this(DEFAULT_BLOCKS_PER_SET, DEFAULT_NUM_SETS, policy);
     }
 
-    public NWaySetCache(int blockSize, int setSize, ReplacementPolicy policy) {
-        this.blockSize = blockSize;
-        this.setSize = setSize;
+    public NWaySetCache(int blocksPerSet, int numSets, ReplacementPolicy policy) {
+        this.blocksPerSet = blocksPerSet;
+        this.numSets = numSets;
         this.policy = policy;
-        this.cacheSetArray = new CacheSet[setSize];
-        for (int i = 0; i < setSize; i++) {
-            cacheSetArray[i] = new CacheSet(this.blockSize, this.policy);
+        this.cacheSetArray = new CacheSet[numSets];
+        for (int i = 0; i < numSets; i++) {
+            cacheSetArray[i] = new CacheSet(this.blocksPerSet, this.policy);
         }
     }
 
@@ -43,11 +43,13 @@ public class NWaySetCache<K, V> implements Cache<K, V> {
         cacheSet.put(cacheBlock);
     }
 
+    @SuppressWarnings("unchecked")
     public V get(K key) {
         int keyHash = key.hashCode();
         int setIndex = calculateSetIndex(keyHash);
         Object val = getCacheSet(setIndex).get(keyHash);
-        // Need to cast back to V. This is ok because we ensured that every object in the CacheSet is type V
+        // Because CacheSet is not a generic class (see design pdf), the returned Object must be cast back
+        // to type V. This is safe because we ensured that every object inserted into the CacheSet is type V.
         return (V) val;
     }
 
@@ -56,8 +58,7 @@ public class NWaySetCache<K, V> implements Cache<K, V> {
     }
 
     private int calculateSetIndex(int keyHash) {
-        // keyHash can be negative, so keyHash % setSize can be negative.
-        // Math.abs() is needed to ensure a positive index.
-        return Math.abs(keyHash % setSize);
+        // keyHash can be negative. Math.abs() is needed to ensure a positive index.
+        return Math.abs(keyHash % numSets);
     }
 }
