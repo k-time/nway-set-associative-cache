@@ -35,7 +35,7 @@ class CacheSet {
             else {
                 policy.replace(cacheBlock, blockMap);
                 // Need to ensure that an alternative policy doesn't overfill the CacheSet,
-                // because client may implement policy incorrectly.
+                // because client may implement policy incorrectly. Could throw an exception instead.
                 while (blockMap.size() > maxSize) {
                     blockMap.remove(blockMap.firstKey());
                 }
@@ -47,6 +47,7 @@ class CacheSet {
         CacheBlock removedBlock = removeBlockIfExists(keyHash);
         if (removedBlock != null) {
             removedBlock.use();
+            // Move the block up
             blockMap.put(removedBlock.getKeyHash(), removedBlock);
             return removedBlock.getValue();
         }

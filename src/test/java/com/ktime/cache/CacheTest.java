@@ -109,8 +109,12 @@ public class CacheTest {
     public void testLRUPolicy() {
         populateIntCache(MAX_CACHE_SIZE);
         intCache.put(16, 16);
+        assert(intCache.getBlocksFromSet(0).equals(Arrays.asList(4, 8, 12, 16)));
         intCache.put(20, 20);
         assert(intCache.getBlocksFromSet(0).equals(Arrays.asList(8, 12, 16, 20)));
+        intCache.get(12);
+        intCache.put(-4, -4);
+        assert(intCache.getBlocksFromSet(0).equals(Arrays.asList(16, 20, 12, -4)));
         assertEquals(intCache.size(), MAX_CACHE_SIZE);
     }
 
@@ -124,8 +128,11 @@ public class CacheTest {
         assert(mruCache.getBlocksFromSet(1).equals(Arrays.asList(5, 9, 17, 1)));
         mruCache.put(21, 21);
         assert(mruCache.getBlocksFromSet(1).equals(Arrays.asList(5, 9, 17, 21)));
+        mruCache.get(9);
+        assert(mruCache.getBlocksFromSet(1).equals(Arrays.asList(5, 17, 21, 9)));
+        mruCache.put(-5, -5);
+        assert(mruCache.getBlocksFromSet(1).equals(Arrays.asList(5, 17, 21, -5)));
         assertEquals(mruCache.size(), MAX_CACHE_SIZE);
-
     }
 
     @Test
@@ -181,9 +188,7 @@ public class CacheTest {
     }
 
     private void populateIntCache(int max) {
-        for (int i = 0; i < max; i++) {
-            intCache.put(i, i);
-        }
+        populateIntCache(this.intCache, max);
     }
 
     private void populateIntCache(Cache<Integer, Integer> cache, int max) {

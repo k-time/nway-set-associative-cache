@@ -8,7 +8,7 @@ import java.util.List;
  */
 public class NWaySetCache<K, V> implements Cache<K, V> {
     private static final int DEFAULT_BLOCKS_PER_SET = 4;
-    private static final int DEFAULT_NUM_SETS = 16;
+    private static final int DEFAULT_NUM_SETS = 64;
     private static final ReplacementPolicy DEFAULT_POLICY = StandardPolicy.LRU;
 
     private final int blocksPerSet;
@@ -33,8 +33,8 @@ public class NWaySetCache<K, V> implements Cache<K, V> {
         this.numSets = numSets;
         this.policy = policy;
         this.cacheSetArray = new CacheSet[numSets];
-        for (int i = 0; i < numSets; i++) {
-            cacheSetArray[i] = new CacheSet(blocksPerSet, this.policy);
+        for (int i = 0; i < this.numSets; i++) {
+            cacheSetArray[i] = new CacheSet(this.blocksPerSet, this.policy);
         }
     }
 
@@ -72,10 +72,6 @@ public class NWaySetCache<K, V> implements Cache<K, V> {
         return count;
     }
 
-    public ReplacementPolicy getPolicy() {
-        return policy;
-    }
-
     CacheSet getCacheSet(int index) {
         return cacheSetArray[index];
     }
@@ -101,6 +97,6 @@ public class NWaySetCache<K, V> implements Cache<K, V> {
             sb.append(getCacheSet(i).toString());
             sb.append("\n");
         }
-        return sb.toString();
+        return sb.toString().trim();
     }
 }

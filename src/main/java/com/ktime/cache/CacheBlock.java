@@ -13,6 +13,7 @@ public class CacheBlock {
     private Date lastUsedDate;
     private Date insertionDate;
 
+    // Package-private constructor. Client cannot create new CacheBlocks or modify data; can only read data.
     CacheBlock(int keyHash, Object value) {
         this.keyHash = keyHash;
         this.value = value;
