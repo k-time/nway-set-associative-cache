@@ -1,5 +1,8 @@
 package com.ktime.cache;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Implementation of an N-way set-associative cache.
  */
@@ -31,7 +34,7 @@ public class NWaySetCache<K, V> implements Cache<K, V> {
         this.policy = policy;
         this.cacheSetArray = new CacheSet[numSets];
         for (int i = 0; i < numSets; i++) {
-            cacheSetArray[i] = new CacheSet(this.blocksPerSet, this.policy);
+            cacheSetArray[i] = new CacheSet(blocksPerSet, this.policy);
         }
     }
 
@@ -53,12 +56,51 @@ public class NWaySetCache<K, V> implements Cache<K, V> {
         return (V) val;
     }
 
-    private CacheSet getCacheSet(int index) {
+    public void evictAll() {
+        for (CacheSet cacheSet : cacheSetArray) {
+            cacheSet.evictAll();
+        }
+    }
+
+    public int size() {
+        // O(# of sets) implementation used for testing.
+        // Can improve to O(1) by keeping tracking of insertions/deletions.
+        int count = 0;
+        for (CacheSet cacheSet : cacheSetArray) {
+            count += cacheSet.size();
+        }
+        return count;
+    }
+
+    public ReplacementPolicy getPolicy() {
+        return policy;
+    }
+
+    CacheSet getCacheSet(int index) {
         return cacheSetArray[index];
+    }
+
+    @SuppressWarnings("unchecked")
+    List<V> getBlocksFromSet(int index) {
+        List<V> list = new ArrayList<>();
+        for (CacheBlock block : getCacheSet(index).getBlocks()) {
+            list.add((V) block.getValue());
+        }
+        return list;
     }
 
     private int calculateSetIndex(int keyHash) {
         // keyHash can be negative. Math.abs() is needed to ensure a positive index.
         return Math.abs(keyHash % numSets);
+    }
+
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < numSets; i++) {
+            sb.append(String.format("Set %d:\t", i));
+            sb.append(getCacheSet(i).toString());
+            sb.append("\n");
+        }
+        return sb.toString();
     }
 }

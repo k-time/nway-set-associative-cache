@@ -1,7 +1,7 @@
 package com.ktime.cache;
 
-import java.util.LinkedList;
+import org.apache.commons.collections4.map.LinkedMap;
 
 public interface ReplacementPolicy {
-    void replace(CacheBlock cacheBlock, LinkedList<CacheBlock> blockList);
+    void replace(CacheBlock cacheBlock, LinkedMap<Integer, CacheBlock> blockMap);
 }

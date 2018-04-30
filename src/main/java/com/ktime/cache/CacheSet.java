@@ -1,67 +1,84 @@
 package com.ktime.cache;
 
-import java.util.LinkedList;
-import java.util.ListIterator;
+import org.apache.commons.collections4.map.LinkedMap;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * Package-private. Class should be hidden from client.
+ * Package-private: class does not need to be visible to client.
  */
 class CacheSet {
     private int maxSize;
     private ReplacementPolicy policy;
-    private LinkedList<CacheBlock> blockList; // List starts with MRU block; ends with LRU block
+    // LRU block is first inserted, LRU block is last inserted. Maps block hash to block object.
+    private LinkedMap<Integer, CacheBlock> blockMap;
 
     CacheSet(int maxSize, ReplacementPolicy policy) {
         this.maxSize = maxSize;
         this.policy = policy;
-        this.blockList = new LinkedList<>();
+        this.blockMap = new LinkedMap<>();
     }
 
     void put(CacheBlock cacheBlock) {
-        CacheBlock removedBlock = removeBlockIfExists(cacheBlock.getKeyHash());
-        if (removedBlock != null || !isFull()) {
-            blockList.addFirst(cacheBlock);
+        CacheBlock oldBlock = removeBlockIfExists(cacheBlock.getKeyHash());
+        if (oldBlock != null) {
+            // Update the old block and add it back
+            oldBlock.updateValue(cacheBlock);
+            oldBlock.use();
+            blockMap.put(oldBlock.getKeyHash(), oldBlock);
         }
         else {
-            policy.replace(cacheBlock, blockList);
-            if (blockList.size() > maxSize) {
-                //throw new Exception("Invalid replacement policy");
+            if (!isFull()) {
+                blockMap.put(cacheBlock.getKeyHash(), cacheBlock);
+            }
+            else {
+                policy.replace(cacheBlock, blockMap);
+                // Need to ensure that an alternative policy doesn't overfill the CacheSet,
+                // because client may implement policy incorrectly.
+                while (blockMap.size() > maxSize) {
+                    blockMap.remove(blockMap.firstKey());
+                }
             }
         }
     }
 
-
     Object get(int keyHash) {
         CacheBlock removedBlock = removeBlockIfExists(keyHash);
         if (removedBlock != null) {
-            blockList.addFirst(removedBlock);
+            removedBlock.use();
+            blockMap.put(removedBlock.getKeyHash(), removedBlock);
             return removedBlock.getValue();
         }
         return null;
     }
 
-    private CacheBlock removeBlockIfExists(int keyHash) {
-        // Use a list iterator so you don't have to call linkedlist find. O(n) to find, O(1) to remove
-        ListIterator<CacheBlock> listIter = blockList.listIterator(0);
-        while (listIter.hasNext()) {
-            CacheBlock curBlock = listIter.next();
-            if (curBlock.getKeyHash() == keyHash) {
-                listIter.remove();
-                return curBlock;
-            }
-        }
-        return null;
+    void evictAll() {
+        blockMap.clear();
     }
 
-    int getSize() {
-        return blockList.size();
-    }
-
-    boolean isEmpty() {
-        return blockList.isEmpty();
+    int size() {
+        return blockMap.size();
     }
 
     boolean isFull() {
-        return getSize() == maxSize;
+        return size() == maxSize;
+    }
+
+    List<CacheBlock> getBlocks() {
+        return new ArrayList<>(blockMap.values());
+    }
+
+    private CacheBlock removeBlockIfExists(Integer keyHash) {
+        return blockMap.remove(keyHash);
+    }
+
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        for (CacheBlock block : blockMap.values()) {
+            sb.append(block.getValue());
+            sb.append("\t");
+        }
+        return sb.toString().trim();
     }
 }
