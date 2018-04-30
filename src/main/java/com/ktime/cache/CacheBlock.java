@@ -22,7 +22,7 @@ public class CacheBlock {
         this.insertionDate = new Date();
     }
 
-    int getKeyHash() {
+    public int getKeyHash() {
         return keyHash;
     }
 
