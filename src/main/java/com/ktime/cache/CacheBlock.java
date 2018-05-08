@@ -4,7 +4,7 @@ import java.util.Date;
 
 public class CacheBlock {
 
-    private int keyHash;
+    private Object key;
     private Object value;
 
     // These fields are not used in my solution. They are provided/calculated so clients
@@ -14,17 +14,15 @@ public class CacheBlock {
     private Date insertionDate;
 
     // Package-private constructor. Client cannot create new CacheBlocks or modify data; can only read data.
-    CacheBlock(int keyHash, Object value) {
-        this.keyHash = keyHash;
+    CacheBlock(Object key, Object value) {
+        this.key = key;
         this.value = value;
         this.uses = 1;
         this.lastUsedDate = new Date();
         this.insertionDate = new Date();
     }
 
-    public int getKeyHash() {
-        return keyHash;
-    }
+    public Object getKey() { return key; }
 
     public Object getValue() {
         return value;
@@ -43,7 +41,7 @@ public class CacheBlock {
     }
 
     void updateValue(CacheBlock newBlock) {
-        if (this.keyHash == newBlock.getKeyHash()) {
+        if (this.key == newBlock.getKey()) {
             this.value = newBlock.getValue();
         }
     }

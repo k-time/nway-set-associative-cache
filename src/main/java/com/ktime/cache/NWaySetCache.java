@@ -42,7 +42,7 @@ public class NWaySetCache<K, V> implements Cache<K, V> {
         int keyHash = key.hashCode();
         int setIndex = calculateSetIndex(keyHash);
         CacheSet cacheSet = getCacheSet(setIndex);
-        CacheBlock cacheBlock = new CacheBlock(keyHash, val);
+        CacheBlock cacheBlock = new CacheBlock(key, val);
         cacheSet.put(cacheBlock);
     }
 
@@ -50,7 +50,7 @@ public class NWaySetCache<K, V> implements Cache<K, V> {
     public V get(K key) {
         int keyHash = key.hashCode();
         int setIndex = calculateSetIndex(keyHash);
-        Object val = getCacheSet(setIndex).get(keyHash);
+        Object val = getCacheSet(setIndex).get(key);
         // Because CacheSet is not a generic class (see design pdf), the returned Object must be cast back
         // to type V. This is safe because we ensured that every object inserted into the CacheSet is type V.
         return (V) val;

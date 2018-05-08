@@ -11,8 +11,8 @@ import java.util.List;
 class CacheSet {
     private int maxSize;
     private ReplacementPolicy policy;
-    // LRU block is first inserted, LRU block is last inserted. Maps block hash to block object.
-    private LinkedMap<Integer, CacheBlock> blockMap;
+    // LRU block is first inserted, LRU block is last inserted. Maps block key to block object.
+    private LinkedMap<Object, CacheBlock> blockMap;
 
     CacheSet(int maxSize, ReplacementPolicy policy) {
         this.maxSize = maxSize;
@@ -21,16 +21,16 @@ class CacheSet {
     }
 
     void put(CacheBlock cacheBlock) {
-        CacheBlock oldBlock = removeBlockIfExists(cacheBlock.getKeyHash());
+        CacheBlock oldBlock = removeBlockIfExists(cacheBlock.getKey());
         if (oldBlock != null) {
             // Update the old block and add it back
             oldBlock.updateValue(cacheBlock);
             oldBlock.use();
-            blockMap.put(oldBlock.getKeyHash(), oldBlock);
+            blockMap.put(oldBlock.getKey(), oldBlock);
         }
         else {
             if (!isFull()) {
-                blockMap.put(cacheBlock.getKeyHash(), cacheBlock);
+                blockMap.put(cacheBlock.getKey(), cacheBlock);
             }
             else {
                 policy.replace(cacheBlock, blockMap);
@@ -43,12 +43,12 @@ class CacheSet {
         }
     }
 
-    Object get(int keyHash) {
-        CacheBlock removedBlock = removeBlockIfExists(keyHash);
+    Object get(Object key) {
+        CacheBlock removedBlock = removeBlockIfExists(key);
         if (removedBlock != null) {
             removedBlock.use();
             // Move the block up
-            blockMap.put(removedBlock.getKeyHash(), removedBlock);
+            blockMap.put(removedBlock.getKey(), removedBlock);
             return removedBlock.getValue();
         }
         return null;
@@ -70,8 +70,8 @@ class CacheSet {
         return new ArrayList<>(blockMap.values());
     }
 
-    private CacheBlock removeBlockIfExists(Integer keyHash) {
-        return blockMap.remove(keyHash);
+    private CacheBlock removeBlockIfExists(Object key) {
+        return blockMap.remove(key);
     }
 
     public String toString() {

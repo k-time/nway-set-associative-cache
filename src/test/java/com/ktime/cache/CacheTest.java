@@ -16,24 +16,24 @@ public class CacheTest {
     public enum AlternativePolicy implements ReplacementPolicy {
         RANDOM {
             @Override
-            public void replace(CacheBlock cacheBlock, LinkedMap<Integer, CacheBlock> blockMap) {
+            public void replace(CacheBlock cacheBlock, LinkedMap<Object, CacheBlock> blockMap) {
                 int index = (int) (Math.random() * blockMap.size());
                 blockMap.remove(index);
-                blockMap.put(cacheBlock.getKeyHash(), cacheBlock);
+                blockMap.put(cacheBlock.getKey(), cacheBlock);
             }
         },
         INVALID_POLICY {
             @Override
-            public void replace(CacheBlock cacheBlock, LinkedMap<Integer, CacheBlock> blockMap) {
+            public void replace(CacheBlock cacheBlock, LinkedMap<Object, CacheBlock> blockMap) {
                 // Invalid because policy doesn't replace any blocks
-                blockMap.put(cacheBlock.getKeyHash(), cacheBlock);
+                blockMap.put(cacheBlock.getKey(), cacheBlock);
             }
         },
         SIMPLE_LFU {
             // A simple least-frequently used implementation, accounting for aging.
             // Removes the block that has the greatest [time since insertion] / [uses].
             @Override
-            public void replace(CacheBlock cacheBlock, LinkedMap<Integer, CacheBlock> blockMap) {
+            public void replace(CacheBlock cacheBlock, LinkedMap<Object, CacheBlock> blockMap) {
                 Date now = new Date();
                 double maxTimePerUse = 0;
                 CacheBlock removeBlock = null;
@@ -45,8 +45,8 @@ public class CacheTest {
                     }
                 }
                 if (removeBlock != null) {
-                    blockMap.remove((Integer) removeBlock.getKeyHash());
-                    blockMap.put(cacheBlock.getKeyHash(), cacheBlock);
+                    blockMap.remove(removeBlock.getKey());
+                    blockMap.put(cacheBlock.getKey(), cacheBlock);
                 }
                 else {
                     StandardPolicy.LRU.replace(cacheBlock, blockMap);
