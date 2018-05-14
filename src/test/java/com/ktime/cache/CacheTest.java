@@ -1,6 +1,5 @@
 package com.ktime.cache;
 
-import org.apache.commons.collections4.map.LinkedMap;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -13,45 +12,60 @@ import static org.junit.Assert.assertNotNull;
 
 public class CacheTest {
 
-    public enum AlternativePolicy implements ReplacementPolicy {
-        RANDOM {
-            @Override
-            public void replace(CacheBlock cacheBlock, LinkedMap<Object, CacheBlock> blockMap) {
-                int index = (int) (Math.random() * blockMap.size());
-                blockMap.remove(index);
-                blockMap.put(cacheBlock.getKey(), cacheBlock);
-            }
-        },
-        INVALID_POLICY {
-            @Override
-            public void replace(CacheBlock cacheBlock, LinkedMap<Object, CacheBlock> blockMap) {
-                // Invalid because policy doesn't replace any blocks
-                blockMap.put(cacheBlock.getKey(), cacheBlock);
-            }
-        },
-        SIMPLE_LFU {
-            // A simple least-frequently used implementation, accounting for aging.
-            // Removes the block that has the greatest [time since insertion] / [uses].
-            @Override
-            public void replace(CacheBlock cacheBlock, LinkedMap<Object, CacheBlock> blockMap) {
-                Date now = new Date();
-                double maxTimePerUse = 0;
-                CacheBlock removeBlock = null;
-                for (CacheBlock block : blockMap.values()) {
-                    double timePerUse = (now.getTime() - block.getInsertionDate().getTime()) / ((double) block.getUses());
-                    if (timePerUse > maxTimePerUse) {
-                        maxTimePerUse = timePerUse;
-                        removeBlock = block;
-                    }
+    private class RandomStorage<K, V> extends LinkedMapStorage<K, V> {
+        @Override
+        public void replace(CacheBlock<K, V> block) {
+            int index = (int) (Math.random() * blockMap.size());
+            blockMap.remove(index);
+            this.add(block);
+        }
+
+        @Override
+        public CacheSetStorage<K, V> createNewInstance() {
+            return new RandomStorage<>();
+        }
+    }
+
+    private class InvalidStorage<K, V> extends LinkedMapStorage<K, V> {
+        @Override
+        public void replace(CacheBlock<K, V> block) {
+            // Invalid because policy doesn't replace any blocks
+            this.add(block);
+
+        }
+
+        @Override
+        public CacheSetStorage<K, V> createNewInstance() {
+            return new InvalidStorage<>();
+        }
+    }
+
+    private class LFUStorage<K, V> extends LinkedMapStorage<K, V> {
+        @Override
+        public void replace(CacheBlock<K, V> block) {
+            Date now = new Date();
+            double maxTimePerUse = 0;
+            CacheBlock<K, V> removeBlock = null;
+            for (CacheBlock<K, V> curBlock : blockMap.values()) {
+                double timePerUse = (now.getTime() - block.getInsertionDate().getTime()) / ((double) block.getUses());
+                if (timePerUse > maxTimePerUse) {
+                    maxTimePerUse = timePerUse;
+                    removeBlock = curBlock;
                 }
-                if (removeBlock != null) {
-                    blockMap.remove(removeBlock.getKey());
-                    blockMap.put(cacheBlock.getKey(), cacheBlock);
-                }
-                else {
-                    StandardPolicy.LRU.replace(cacheBlock, blockMap);
-                }
             }
+            if (removeBlock != null) {
+                blockMap.remove(removeBlock.getKey());
+                this.add(block);
+            }
+            else {
+                blockMap.remove(blockMap.firstKey());
+                this.add(block);
+            }
+        }
+
+        @Override
+        public CacheSetStorage<K, V> createNewInstance() {
+            return new LFUStorage<>();
         }
     }
 
@@ -61,7 +75,7 @@ public class CacheTest {
 
     // Different ways to instantiate cache
     private final Cache<String, Integer> stringCache = new NWaySetCache<>();
-    private final NWaySetCache<Integer, Integer> intCache = new NWaySetCache<>(BLOCKS_PER_SET, NUM_SETS, StandardPolicy.LRU);
+    private final NWaySetCache<Integer, Integer> intCache = new NWaySetCache<>(BLOCKS_PER_SET, NUM_SETS, new LRUStorage<>());
 
     @Before
     public void clearCache() {
@@ -120,7 +134,7 @@ public class CacheTest {
 
     @Test
     public void testMRUPolicy() {
-        NWaySetCache<Integer, Integer> mruCache = new NWaySetCache<>(BLOCKS_PER_SET, NUM_SETS, StandardPolicy.MRU);
+        NWaySetCache<Integer, Integer> mruCache = new NWaySetCache<>(BLOCKS_PER_SET, NUM_SETS, new MRUStorage<>());
         populateIntCache(mruCache, MAX_CACHE_SIZE);
         mruCache.put(17, 17);
         assert(mruCache.getBlocksFromSet(1).equals(Arrays.asList(1, 5, 9, 17)));
@@ -137,7 +151,7 @@ public class CacheTest {
 
     @Test
     public void testValidAlternativePolicy() {
-        NWaySetCache<Integer, Integer> randomCache = new NWaySetCache<>(BLOCKS_PER_SET, NUM_SETS, AlternativePolicy.RANDOM);
+        NWaySetCache<Integer, Integer> randomCache = new NWaySetCache<>(BLOCKS_PER_SET, NUM_SETS, new RandomStorage<>());
         populateIntCache(randomCache, MAX_CACHE_SIZE);
         randomCache.put(17, 17);
         assert(randomCache.getBlocksFromSet(1).contains(17));
@@ -148,17 +162,17 @@ public class CacheTest {
 
     @Test
     public void testInvalidAlternativePolicy() {
-        Cache<Integer, Integer> cache = new NWaySetCache<>(4, 4, AlternativePolicy.INVALID_POLICY);
+        Cache<Integer, Integer> cache = new NWaySetCache<>(4, 4, new InvalidStorage<>());
         populateIntCache(cache, MAX_CACHE_SIZE);
         cache.put(16, 16);
         cache.put(-4, -4);
-        // Just need to check that that the cache has not been overfilled
-        assertEquals(cache.size(), MAX_CACHE_SIZE);
+        // Need to check that that the cache has not been overfilled
+        assertEquals(cache.size(), MAX_CACHE_SIZE - BLOCKS_PER_SET + 1);
     }
 
     @Test
     public void testLeastFrequentlyUsedPolicy() throws InterruptedException {
-        NWaySetCache<Integer, Integer> lfuCache = new NWaySetCache<>(BLOCKS_PER_SET, NUM_SETS, AlternativePolicy.SIMPLE_LFU);
+        NWaySetCache<Integer, Integer> lfuCache = new NWaySetCache<>(BLOCKS_PER_SET, NUM_SETS, new LFUStorage<>());
         populateIntCache(lfuCache, MAX_CACHE_SIZE);
         populateIntCache(lfuCache, MAX_CACHE_SIZE-1);
         Thread.sleep(10);

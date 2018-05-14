@@ -1,82 +1,78 @@
 package com.ktime.cache;
 
-import org.apache.commons.collections4.map.LinkedMap;
-
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Collection;
 
 /**
  * Package-private: class does not need to be visible to client.
  */
-class CacheSet {
+class CacheSet<K, V> {
     private int maxSize;
-    private ReplacementPolicy policy;
-    // LRU block is first inserted, LRU block is last inserted. Maps block key to block object.
-    private LinkedMap<Object, CacheBlock> blockMap;
+    private CacheSetStorage<K, V> storage;
 
-    CacheSet(int maxSize, ReplacementPolicy policy) {
+    CacheSet(int maxSize, CacheSetStorage<K, V> storage) {
         this.maxSize = maxSize;
-        this.policy = policy;
-        this.blockMap = new LinkedMap<>();
+        this.storage = storage;
     }
 
-    void put(CacheBlock cacheBlock) {
-        CacheBlock oldBlock = removeBlockIfExists(cacheBlock.getKey());
+    void put(CacheBlock<K, V> cacheBlock) {
+        CacheBlock<K, V> oldBlock = removeBlockIfExists(cacheBlock.getKey());
         if (oldBlock != null) {
             // Update the old block and add it back
             oldBlock.updateValue(cacheBlock);
             oldBlock.use();
-            blockMap.put(oldBlock.getKey(), oldBlock);
+            storage.add(oldBlock);
         }
         else {
             if (!isFull()) {
-                blockMap.put(cacheBlock.getKey(), cacheBlock);
+                storage.add(cacheBlock);
             }
             else {
-                policy.replace(cacheBlock, blockMap);
-                // Need to ensure that an alternative policy doesn't overfill the CacheSet,
-                // because client may implement policy incorrectly. Could throw an exception instead.
-                while (blockMap.size() > maxSize) {
-                    blockMap.remove(blockMap.firstKey());
+                storage.replace(cacheBlock);
+                /* Need to ensure that an alternative policy doesn't overfill the CacheSet,
+                   because client may implement policy incorrectly. Could throw an exception instead.
+                   Might be overkill to evict all, but this way client doesn't have to implement
+                   an extra removeAny() method. */
+                if (storage.size() > maxSize) {
+                    storage.evictAll();
                 }
             }
         }
     }
 
-    Object get(Object key) {
-        CacheBlock removedBlock = removeBlockIfExists(key);
+    V get(K key) {
+        CacheBlock<K, V> removedBlock = removeBlockIfExists(key);
         if (removedBlock != null) {
             removedBlock.use();
             // Move the block up
-            blockMap.put(removedBlock.getKey(), removedBlock);
+            storage.add(removedBlock);
             return removedBlock.getValue();
         }
         return null;
     }
 
     void evictAll() {
-        blockMap.clear();
+        storage.evictAll();
     }
 
     int size() {
-        return blockMap.size();
+        return storage.size();
     }
 
     boolean isFull() {
         return size() == maxSize;
     }
 
-    List<CacheBlock> getBlocks() {
-        return new ArrayList<>(blockMap.values());
+    Collection<CacheBlock<K, V>> getBlocks() {
+        return storage.getBlocks();
     }
 
-    private CacheBlock removeBlockIfExists(Object key) {
-        return blockMap.remove(key);
+    private CacheBlock<K, V> removeBlockIfExists(K key) {
+        return storage.remove(key);
     }
 
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        for (CacheBlock block : blockMap.values()) {
+        for (CacheBlock block : getBlocks()) {
             sb.append(block.getValue());
             sb.append("\t");
         }

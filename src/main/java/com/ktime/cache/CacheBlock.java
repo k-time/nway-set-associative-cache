@@ -2,10 +2,10 @@ package com.ktime.cache;
 
 import java.util.Date;
 
-public class CacheBlock {
+public class CacheBlock<K, V> {
 
-    private Object key;
-    private Object value;
+    private K key;
+    private V value;
 
     // These fields are not used in my solution. They are provided/calculated so clients
     // may use them to help implement their alternative replacement policies.
@@ -14,7 +14,7 @@ public class CacheBlock {
     private Date insertionDate;
 
     // Package-private constructor. Client cannot create new CacheBlocks or modify data; can only read data.
-    CacheBlock(Object key, Object value) {
+    CacheBlock(K key, V value) {
         this.key = key;
         this.value = value;
         this.uses = 1;
@@ -22,9 +22,9 @@ public class CacheBlock {
         this.insertionDate = new Date();
     }
 
-    public Object getKey() { return key; }
+    public K getKey() { return key; }
 
-    public Object getValue() {
+    public V getValue() {
         return value;
     }
 
@@ -40,7 +40,7 @@ public class CacheBlock {
         return insertionDate;
     }
 
-    void updateValue(CacheBlock newBlock) {
+    void updateValue(CacheBlock<K, V> newBlock) {
         if (this.key == newBlock.getKey()) {
             this.value = newBlock.getValue();
         }

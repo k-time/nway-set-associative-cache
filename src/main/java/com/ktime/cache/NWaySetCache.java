@@ -1,5 +1,7 @@
 package com.ktime.cache;
 
+import org.apache.commons.collections4.list.FixedSizeList;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -9,78 +11,76 @@ import java.util.List;
 public class NWaySetCache<K, V> implements Cache<K, V> {
     private static final int DEFAULT_BLOCKS_PER_SET = 4;
     private static final int DEFAULT_NUM_SETS = 64;
-    private static final ReplacementPolicy DEFAULT_POLICY = StandardPolicy.LRU;
 
     private final int blocksPerSet;
     private final int numSets;
-    private final CacheSet[] cacheSetArray;
-    private final ReplacementPolicy policy;
+    private final List<CacheSet<K, V>> cacheSetList;
 
     public NWaySetCache() {
-        this(DEFAULT_BLOCKS_PER_SET, DEFAULT_NUM_SETS, DEFAULT_POLICY);
+        this(DEFAULT_BLOCKS_PER_SET, DEFAULT_NUM_SETS, new LRUStorage<>());
     }
 
     public NWaySetCache(int blocksPerSet, int numSets) {
-        this(blocksPerSet, numSets, DEFAULT_POLICY);
+        this(blocksPerSet, numSets, new LRUStorage<>());
     }
 
-    public NWaySetCache(ReplacementPolicy policy) {
-        this(DEFAULT_BLOCKS_PER_SET, DEFAULT_NUM_SETS, policy);
+    public NWaySetCache(CacheSetStorage<K, V> storage) {
+        this(DEFAULT_BLOCKS_PER_SET, DEFAULT_NUM_SETS, storage);
     }
 
-    public NWaySetCache(int blocksPerSet, int numSets, ReplacementPolicy policy) {
+    public NWaySetCache(int blocksPerSet, int numSets, CacheSetStorage<K, V> storage) {
         this.blocksPerSet = blocksPerSet;
         this.numSets = numSets;
-        this.policy = policy;
-        this.cacheSetArray = new CacheSet[numSets];
+        List<CacheSet<K, V>> tempList = new ArrayList<>();
         for (int i = 0; i < this.numSets; i++) {
-            cacheSetArray[i] = new CacheSet(this.blocksPerSet, this.policy);
+            tempList.add(new CacheSet<>(this.blocksPerSet, storage.createNewInstance()));
         }
+        // Wrapper to fix the size of the list (number of sets is fixed)
+        this.cacheSetList = FixedSizeList.fixedSizeList(tempList);
     }
 
+    @Override
     public void put(K key, V val) {
         int keyHash = key.hashCode();
         int setIndex = calculateSetIndex(keyHash);
-        CacheSet cacheSet = getCacheSet(setIndex);
-        CacheBlock cacheBlock = new CacheBlock(key, val);
+        CacheSet<K, V> cacheSet = getCacheSet(setIndex);
+        CacheBlock<K, V> cacheBlock = new CacheBlock<>(key, val);
         cacheSet.put(cacheBlock);
     }
 
-    @SuppressWarnings("unchecked")
+    @Override
     public V get(K key) {
         int keyHash = key.hashCode();
         int setIndex = calculateSetIndex(keyHash);
-        Object val = getCacheSet(setIndex).get(key);
-        // Because CacheSet is not a generic class (see design pdf), the returned Object must be cast back
-        // to type V. This is safe because we ensured that every object inserted into the CacheSet is type V.
-        return (V) val;
+        return getCacheSet(setIndex).get(key);
     }
 
+    @Override
     public void evictAll() {
-        for (CacheSet cacheSet : cacheSetArray) {
+        for (CacheSet cacheSet : cacheSetList) {
             cacheSet.evictAll();
         }
     }
 
+    @Override
     public int size() {
         // O(# of sets) implementation used for testing.
         // Can improve to O(1) by keeping tracking of insertions/deletions.
         int count = 0;
-        for (CacheSet cacheSet : cacheSetArray) {
+        for (CacheSet cacheSet : cacheSetList) {
             count += cacheSet.size();
         }
         return count;
     }
 
-    CacheSet getCacheSet(int index) {
-        return cacheSetArray[index];
+    CacheSet<K, V> getCacheSet(int index) {
+        return cacheSetList.get(index);
     }
 
-    @SuppressWarnings("unchecked")
     List<V> getBlocksFromSet(int index) {
         List<V> list = new ArrayList<>();
-        for (CacheBlock block : getCacheSet(index).getBlocks()) {
-            list.add((V) block.getValue());
+        for (CacheBlock<K, V> block : getCacheSet(index).getBlocks()) {
+            list.add(block.getValue());
         }
         return list;
     }
@@ -90,6 +90,7 @@ public class NWaySetCache<K, V> implements Cache<K, V> {
         return Math.abs(keyHash % numSets);
     }
 
+    @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < numSets; i++) {
