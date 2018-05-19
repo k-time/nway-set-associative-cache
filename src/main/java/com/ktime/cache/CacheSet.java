@@ -15,12 +15,13 @@ class CacheSet<K, V> {
     }
 
     void put(CacheBlock<K, V> cacheBlock) {
-        CacheBlock<K, V> oldBlock = removeBlockIfExists(cacheBlock.getKey());
+        CacheBlock<K, V> oldBlock = getBlock(cacheBlock.getKey());
         if (oldBlock != null) {
-            // Update the old block and add it back
+            // Update the old block
             oldBlock.updateValue(cacheBlock);
             oldBlock.use();
-            storage.add(oldBlock);
+            // Perform actions to be taken when a block is used
+            storage.onUsage(oldBlock);
         }
         else {
             if (!isFull()) {
@@ -30,7 +31,7 @@ class CacheSet<K, V> {
                 storage.replace(cacheBlock);
                 /* Need to ensure that an alternative policy doesn't overfill the CacheSet,
                    because client may implement policy incorrectly. Could throw an exception instead.
-                   Might be overkill to evict all, but this way client doesn't have to implement
+                   A little overkill to evict all, but this way client doesn't have to implement
                    an extra removeAny() method. */
                 if (storage.size() > maxSize) {
                     storage.evictAll();
@@ -40,12 +41,12 @@ class CacheSet<K, V> {
     }
 
     V get(K key) {
-        CacheBlock<K, V> removedBlock = removeBlockIfExists(key);
-        if (removedBlock != null) {
-            removedBlock.use();
-            // Move the block up
-            storage.add(removedBlock);
-            return removedBlock.getValue();
+        CacheBlock<K, V> block = getBlock(key);
+        if (block != null) {
+            block.use();
+            // Perform actions to be taken when a block is used
+            storage.onUsage(block);
+            return block.getValue();
         }
         return null;
     }
@@ -66,8 +67,8 @@ class CacheSet<K, V> {
         return storage.getBlocks();
     }
 
-    private CacheBlock<K, V> removeBlockIfExists(K key) {
-        return storage.remove(key);
+    private CacheBlock<K, V> getBlock(K key) {
+        return storage.get(key);
     }
 
     public String toString() {

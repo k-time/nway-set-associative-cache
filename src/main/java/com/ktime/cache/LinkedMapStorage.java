@@ -22,6 +22,11 @@ public abstract class LinkedMapStorage<K, V> implements CacheSetStorage<K, V> {
     }
 
     @Override
+    public CacheBlock<K, V> get(K key) {
+        return blockMap.get(key);
+    }
+
+    @Override
     public void evictAll() {
         blockMap.clear();
     }
@@ -34,6 +39,13 @@ public abstract class LinkedMapStorage<K, V> implements CacheSetStorage<K, V> {
     @Override
     public Collection<CacheBlock<K, V>> getBlocks() {
         return blockMap.values();
+    }
+
+    @Override
+    public void onUsage(CacheBlock<K, V> block) {
+        // Move to back on the line
+        remove(block.getKey());
+        add(block);
     }
 
     @Override
