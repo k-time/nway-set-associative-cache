@@ -31,7 +31,7 @@ public class NWaySetCache<K, V> implements Cache<K, V> {
     public NWaySetCache(int blocksPerSet, int numSets, CacheSetStorage<K, V> storage) {
         this.blocksPerSet = blocksPerSet;
         this.numSets = numSets;
-        List<CacheSet<K, V>> tempList = new ArrayList<>();
+        List<CacheSet<K, V>> tempList = new ArrayList<>(numSets);
         for (int i = 0; i < this.numSets; i++) {
             tempList.add(new CacheSet<>(this.blocksPerSet, storage.createNewInstance()));
         }
