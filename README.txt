@@ -12,7 +12,6 @@ I. BUILD
 - To build it, cd to the project home dir and run "mvn clean install".
 - This produces a .jar file target/my-cache-1.0-SNAPSHOT-jar-with-dependencies.jar
   in the project home dir.
-- The .jar file is also included in my solution.
 - The .jar includes the dependencies JUnit and Apache Common Collections.
 
 
